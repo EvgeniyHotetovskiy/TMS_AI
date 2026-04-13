@@ -1,0 +1,73 @@
+Ты Senior QA engineer.
+
+Задача: преобразовать тестовые сценарии CRM Corp в строгий JSON с тест-кейсами.
+
+Критические правила:
+- Верни ТОЛЬКО JSON.
+- Без markdown, комментариев и пояснений.
+- JSON должен начинаться с { и заканчиваться }.
+- Не добавляй поля, которых нет в формате.
+- Не придумывай бизнес-правила вне входных сценариев.
+
+Формат JSON:
+
+{
+  "testcases": [
+    {
+      "id": "TC-CRM-001",
+      "title": "Успешное создание корпоративного клиента в CRM Corp",
+      "type": "positive",
+      "steps": [
+        "Сформировать POST запрос на создание корпоративного клиента",
+        "Указать уникальный externalId 'CORP-2026-0001'",
+        "Передать валидные данные компании: inn, kpp, fullName, shortName",
+        "Указать сегмент клиента 'CORP' и статус 'PROSPECT'",
+        "Отправить запрос через канал 'CRM_PORTAL'"
+      ],
+      "expected": {
+        "statusCode": 201,
+        "result": "SUCCESS",
+        "message": "Корпоративный клиент успешно создан"
+      }
+    },
+    {
+      "id": "TC-CRM-002",
+      "title": "Отказ в создании: дубликат по ИНН и КПП",
+      "type": "negative",
+      "steps": [
+        "Сформировать POST запрос с уже существующими inn и kpp",
+        "Указать новый externalId 'CORP-2026-0002'",
+        "Передать остальные валидные данные компании",
+        "Отправить запрос в CRM Corp"
+      ],
+      "expected": {
+        "statusCode": 409,
+        "errorInfo": {
+          "errorCode": "CRM_DUPLICATE",
+          "errorDescription": "Корпоративный клиент с указанными ИНН и КПП уже существует"
+        }
+      }
+    },
+    {
+      "id": "TC-CRM-003",
+      "title": "Ошибка валидации: отсутствуют обязательные реквизиты компании",
+      "type": "negative",
+      "steps": [
+        "Сформировать POST запрос без inn или без fullName",
+        "Указать externalId 'CORP-2026-0003'",
+        "Передать неполный набор обязательных полей",
+        "Отправить запрос в CRM Corp"
+      ],
+      "expected": {
+        "statusCode": 400,
+        "errorInfo": {
+          "errorCode": "VALIDATION_ERROR",
+          "errorDescription": "Не заполнены обязательные поля корпоративного клиента"
+        }
+      }
+    }
+  ]
+}
+
+SCENARIOS:
+{"scenarios": [{"id": "SC-CRM-001", "title": "Создание корпоративного клиента с корректными данными", "type": "positive", "preconditions": ["API доступен", "Отсутствует клиент с таким же ИНН+КПП"], "steps": ["Отправить POST-запрос на /api/corporate-clients с валидными данными (externalId, inn, kpp, fullName, channel, source, registrationDate)", "Получить ответ от API"], "expected_result": "Статус 201, клиент создан в системе с переданными данными"}, {"id": "SC-CRM-002", "title": "Попытка создания клиента с дублирующимися ИНН и КПП", "type": "negative", "preconditions": ["API доступен", "Существует клиент с таким же ИНН+КПП"], "steps": ["Отправить POST-запрос на /api/corporate-clients с данными, где inn и kpp совпадают с существующим клиентом", "Получить ответ от API"], "expected_result": "Статус 409, ошибка дубликата (например, 'Client with this INN and KPP already exists')"}, {"id": "SC-CRM-003", "title": "Создание клиента без обязательных полей externalId, inn, fullName", "type": "negative", "preconditions": ["API доступен"], "steps": ["Отправить POST-запрос на /api/corporate-clients без полей externalId, inn, fullName", "Получить ответ от API"], "expected_result": "Ошибка валидации (например, 'externalId, inn, fullName are required')"}, {"id": "SC-CRM-004", "title": "Создание клиента с пустыми строками или null в обязательных полях", "type": "negative", "preconditions": ["API доступен"], "steps": ["Отправить POST-запрос на /api/corporate-clients с пустыми строками или null в полях externalId, inn, fullName", "Получить ответ от API"], "expected_result": "Статус 400 Bad Request, ошибка валидации без падения сервиса"}, {"id": "SC-CRM-005", "title": "Создание клиента с некорректным форматом ИНН", "type": "negative", "preconditions": ["API доступен"], "steps": ["Отправить POST-запрос на /api/corporate-clients с некорректным форматом ИНН (например, длина < 10 или > 12, символы)", "Получить ответ от API"], "expected_result": "Ошибка валидации (например, 'Invalid INN format')"}, {"id": "SC-CRM-006", "title": "Создание клиента с некорректным форматом КПП", "type": "negative", "preconditions": ["API доступен"], "steps": ["Отправить POST-запрос на /api/corporate-clients с некорректным форматом КПП (например, длина != 9, символы)", "Получить ответ от API"], "expected_result": "Ошибка валидации (например, 'Invalid KPP format')"}, {"id": "SC-CRM-007", "title": "Создание клиента с неразрешенным значением channel/source", "type": "negative", "preconditions": ["API доступен"], "steps": ["Отправить POST-запрос на /api/corporate-clients с неразрешенным значением channel или source (например, 'invalid_channel')", "Получить ответ от API"], "expected_result": "Ошибка валидации (например, 'Invalid channel/source value')"}, {"id": "SC-CRM-008", "title": "Создание клиента с датой регистрации из будущего", "type": "negative", "preconditions": ["API доступен"], "steps": ["Отправить POST-запрос на /api/corporate-clients с датой регистрации в будущем (например, 2030-01-01)", "Получить ответ от API"], "expected_result": "Запрос отклонен, ошибка валидации (например, 'Registration date cannot be in the future')"}, {"id": "SC-CRM-009", "title": "Создание клиента с некорректной датой регистрации (например, 0000-00-00)", "type": "negative", "preconditions": ["API доступен"], "steps": ["Отправить POST-запрос на /api/corporate-clients с некорректной датой регистрации (например, '0000-00-00')", "Получить ответ от API"], "expected_result": "Запрос отклонен, ошибка валидации (например, 'Invalid registration date format')"}, {"id": "SC-CRM-010", "title": "Создание клиента с спецсимволами в наименовании организации", "type": "positive", "preconditions": ["API доступен"], "steps": ["Отправить POST-запрос на /api/corporate-clients с полем fullName, содержащим спецсимволы (например, 'ООО \"Рога и Копыта\"', 'ОАО-Рога')", "Получить ответ от API"], "expected_result": "Статус 201, клиент создан, данные сохранены корректно (спецсимволы отображаются без ошибок)"}]}

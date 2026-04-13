@@ -1,0 +1,72 @@
+Ты Senior QA Engineer.
+
+Контекст: CRM Corp, процесс создания корпоративного клиента.
+
+На основе артефактов:
+- исходный чек-лист,
+- сгенерированные test cases,
+- AI code review,
+
+выяви дефекты, несоответствия требованиям, пропущенные проверки и риски.
+
+Критерии поиска:
+- конфликт между чек-листом и test cases;
+- неполное покрытие обязательных негативных сценариев;
+- недостоверные expected result;
+- риск ложноположительных/ложноотрицательных проверок в автотестах;
+- технические риски, влияющие на качество тестирования.
+
+Формат ответа:
+- Верни ТОЛЬКО JSON.
+- Если проблем нет:
+{ "status": "NO_BUGS_FOUND" }
+
+- Если проблемы есть, верни:
+{
+  "status": "BUGS_FOUND",
+  "bugs": [
+    {
+      "id": "BUG-001",
+      "title": "",
+      "severity": "blocker|critical|major|minor",
+      "priority": "high|medium|low",
+      "preconditions": "",
+      "steps_to_reproduce": [],
+      "actual_result": "",
+      "expected_result": "",
+      "probable_root_cause": "",
+      "evidence": ""
+    }
+  ]
+}
+
+Правила:
+- Только валидный JSON.
+- Без markdown.
+- Без пояснений вне JSON.
+- Не придумывай факты, которых нет в артефактах.
+
+CHECKLIST:
+Чек-лист CRM Corp (создание корпоративного клиента):
+
+1. Передать все корректные данные компании -> статус 201, клиент создан.
+
+2. Использовать уже существующую пару ИНН + КПП -> статус 409, ошибка дубликата.
+
+3. Отправить запрос без обязательных полей (externalId, inn, fullName) -> ошибка валидации.
+
+4. Передать пустые строки или null в обязательных полях -> статус 400 Bad Request, без падения сервиса.
+
+5. Передать некорректный формат ИНН/КПП (длина, символы) -> ошибка валидации.
+
+6. Передать неразрешенное значение channel/source -> ошибка валидации.
+
+7. Передать некорректную дату регистрации или дату из будущего -> запрос отклоняется.
+
+8. Передать спецсимволы в наименовании организации (дефис, кавычки, апостроф) -> данные сохраняются корректно.
+
+TESTCASES:
+{"testcases": [{"id": "TC-CRM-001", "title": "Создание корпоративного клиента с корректными данными", "type": "positive", "steps": ["Отправить POST-запрос на /api/corporate-clients с валидными данными (externalId, inn, kpp, fullName, channel, source, registrationDate)", "Получить ответ от API"], "expected": {"statusCode": 201, "result": "SUCCESS", "message": "Клиент успешно создан"}}, {"id": "TC-CRM-002", "title": "Попытка создания клиента с дублирующимися ИНН и КПП", "type": "negative", "steps": ["Отправить POST-запрос на /api/corporate-clients с данными, где inn и kpp совпадают с существующим клиентом", "Получить ответ от API"], "expected": {"statusCode": 409, "errorInfo": {"errorCode": "CRM_DUPLICATE", "errorDescription": "Client with this INN and KPP already exists"}}}, {"id": "TC-CRM-003", "title": "Создание клиента без обязательных полей externalId, inn, fullName", "type": "negative", "steps": ["Отправить POST-запрос на /api/corporate-clients без полей externalId, inn, fullName", "Получить ответ от API"], "expected": {"statusCode": 400, "errorInfo": {"errorCode": "VALIDATION_ERROR", "errorDescription": "externalId, inn, fullName are required"}}}, {"id": "TC-CRM-004", "title": "Создание клиента с пустыми строками или null в обязательных полях", "type": "negative", "steps": ["Отправить POST-запрос на /api/corporate-clients с пустыми строками или null в полях externalId, inn, fullName", "Получить ответ от API"], "expected": {"statusCode": 400, "errorInfo": {"errorCode": "VALIDATION_ERROR", "errorDescription": "Поля externalId, inn, fullName не могут быть пустыми или null"}}}, {"id": "TC-CRM-005", "title": "Создание клиента с некорректным форматом ИНН", "type": "negative", "steps": ["Отправить POST-запрос на /api/corporate-clients с некорректным форматом ИНН (например, длина < 10 или > 12, символы)", "Получить ответ от API"], "expected": {"statusCode": 400, "errorInfo": {"errorCode": "VALIDATION_ERROR", "errorDescription": "Invalid INN format"}}}, {"id": "TC-CRM-006", "title": "Создание клиента с некорректным форматом КПП", "type": "negative", "steps": ["Отправить POST-запрос на /api/corporate-clients с некорректным форматом КПП (например, длина != 9, символы)", "Получить ответ от API"], "expected": {"statusCode": 400, "errorInfo": {"errorCode": "VALIDATION_ERROR", "errorDescription": "Invalid KPP format"}}}, {"id": "TC-CRM-007", "title": "Создание клиента с неразрешенным значением channel/source", "type": "negative", "steps": ["Отправить POST-запрос на /api/corporate-clients с неразрешенным значением channel или source (например, 'invalid_channel')", "Получить ответ от API"], "expected": {"statusCode": 400, "errorInfo": {"errorCode": "VALIDATION_ERROR", "errorDescription": "Invalid channel/source value"}}}, {"id": "TC-CRM-008", "title": "Создание клиента с датой регистрации из будущего", "type": "negative", "steps": ["Отправить POST-запрос на /api/corporate-clients с датой регистрации в будущем (например, 2030-01-01)", "Получить ответ от API"], "expected": {"statusCode": 400, "errorInfo": {"errorCode": "VALIDATION_ERROR", "errorDescription": "Registration date cannot be in the future"}}}, {"id": "TC-CRM-009", "title": "Создание клиента с некорректной датой регистрации (например, 0000-00-00)", "type": "negative", "steps": ["Отправить POST-запрос на /api/corporate-clients с некорректной датой регистрации (например, '0000-00-00')", "Получить ответ от API"], "expected": {"statusCode": 400, "errorInfo": {"errorCode": "VALIDATION_ERROR", "errorDescription": "Invalid registration date format"}}}, {"id": "TC-CRM-010", "title": "Создание клиента с спецсимволами в наименовании организации", "type": "positive", "steps": ["Отправить POST-запрос на /api/corporate-clients с полем fullName, содержащим спецсимволы (например, 'ООО \"Рога и Копыта\"', 'ОАО-Рога')", "Получить ответ от API"], "expected": {"statusCode": 201, "result": "SUCCESS", "message": "Клиент успешно создан"}}]}
+
+CODE REVIEW:
+{"summary":"Код представляет собой пайплайн генерации автотестов и отчетов с использованием LLM, не является автотестом и не требует ревью как тест-кейс. Однако выявлены критические проблемы в обработке JSON и стабильности пайплайна, которые могут привести к сбоям в процессе генерации тестов.","findings":[{"id":"REV-001","severity":"high","category":"stability","issue":"Отсутствует обработка случая, когда поле 'choices' в JSON-ответе LLM отсутствует или пусто. В коде используется .path(), но не проверяется, что массив choices не пуст перед обращением к первому элементу.", "impact":"Риск падения пайплайна с NullPointerException или возврата пустой строки при некорректном ответе LLM, что приведет к генерации неполных или битых тестов.", "recommendation":"Добавить явную проверку на пустоту массива choices перед обращением к элементам. Пример: if (choices.isArray() && choices.size() > 0) { ... } else { throw new IllegalStateException(\"Invalid LLM response structure\"); }"},{"id":"REV-002","severity":"high","category":"stability","issue":"Метод extractAssistantContent() не обрабатывает случаи, когда в JSON-ответе отсутствует поле 'message' или 'content'. Используется цепочка .path(), но не проверяется итоговый результат на пустую строку.", "impact":"Возможна генерация тестов с некорректными или отсутствующими сценариями, что приведет к неработоспособности автотестов.", "recommendation":"Добавить валидацию всех промежуточных узлов JSON. Например: String content = choices.get(0).path(\"message\").path(\"content\").asText(\"\"); if (content.isEmpty()) { throw new IllegalStateException(\"Empty content in LLM response\"); }"},{"id":"REV-003","severity":"medium","category":"maintainability","issue":"Хардкод путей к файлам (например, \"generated/final_prompt.txt\", \"src/main/java/org/ai_agent/PipelineMain.java\") и отсутствие конфигурационного файла для их управления.", "impact":"Затрудняет переносимость пайплайна между окружениями и увеличивает риск ошибок при изменении структуры проекта.", "recommendation":"Вынести все пути в конфигурационный файл (например, application.properties) или использовать относительные пути с базовыми директориями, определенными через системные переменные."},{"id":"REV-004","severity":"medium","category":"stability","issue":"Отсутствует обработка исключений при записи файлов через FilesUtil.write(). Нет проверки на доступность директорий или прав на запись.", "impact":"Риск падения пайплайна при отсутствии директории 'generated' или недостатке прав, что прервет генерацию тестов.", "recommendation":"Добавить проверку существования директорий перед записью и обработку IOException. Например: FilesUtil.ensureDirectoryExists(\"generated\"); try { FilesUtil.write(...); } catch (IOException e) { System.err.println(\"Failed to write file: \" + e.getMessage()); }"},{"id":"REV-005","severity":"low","category":"maintainability","issue":"Метод extractAssistantContent() дублирует логику парсинга JSON, которая может быть вынесена в утилитарный класс (например, JsonHelper).", "impact":"Увеличивает сложность кода и затрудняет его поддержку при изменении структуры ответов LLM.", "recommendation":"Вынести парсинг JSON в отдельный класс или метод с унифицированной логикой, например: public static String extractContent(String rawJson) throws JsonProcessingException { ... }"},{"id":"REV-006","severity":"low","category":"stability","issue":"Отсутствует валидация входных данных в методе extractAssistantContent(). Не проверяется, что rawJson не null и не пуст перед парсингом.", "impact":"Риск падения с NullPointerException или некорректной обработки пустых строк.", "recommendation":"Добавить валидацию в начале метода: if (rawJson == null || rawJson.trim().isEmpty()) { throw new IllegalArgumentException(\"Input JSON cannot be null or empty\"); }"},{"id":"REV-007","severity":"medium","category":"functional","issue":"В пайплайне отсутствует обработка сценариев, где LLM возвращает частично корректный JSON (например, с синтаксическими ошибками). Нет повторных попыток или фоллбэков.", "impact":"Генерация битых тестов или отчетов, что приведет к ложным срабатываниям или пропущенным багам в CRM.", "recommendation":"Добавить механизм ретраев с экспоненциальным бэкоффом для вызовов MistralClient.call(). Например, реализовать retryTemplate с 3 попытками и задержкой между ними."}],"overall_quality":"medium"}
